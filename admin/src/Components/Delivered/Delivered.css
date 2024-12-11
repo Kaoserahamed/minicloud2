@@ -1,0 +1,75 @@
+.orders-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.order-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background-color: #f9f9f9;
+}
+
+.order-card h2 {
+    margin-bottom: 10px;
+}
+
+.order-card p {
+    margin: 5px 0;
+}
+
+.product-item {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.product-item img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    margin-right: 10px;
+}
+
+/* The media queries can be reused from Orders.css */
+@media screen and (max-width: 1280px) {
+    .orders-container {
+        padding: 15px;
+    }
+}
+
+@media screen and (max-width: 1024px) {
+    .product-item img {
+        width: 50px;
+        height: 50px;
+    }
+}
+
+@media screen and (max-width: 800px) {
+    .order-card {
+        padding: 15px;
+    }
+
+    button {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media screen and (max-width: 500px) {
+    .order-card {
+        padding: 10px;
+    }
+
+    .product-item img {
+        width: 40px;
+        height: 40px;
+    }
+}
