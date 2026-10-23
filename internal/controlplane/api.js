@@ -1,10 +1,13 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const { logger } = require('@minicloud/logging');
 const { traceMiddleware, getTraceId } = require('@minicloud/tracing');
 const { authMiddleware, requirePermission, requireRole, issueJWT } = require('./auth');
 const { DatabaseService } = require('@minicloud/internal-database');
 
 const db = new DatabaseService();
+const OPENAPI_SPEC = fs.readFileSync(path.resolve(__dirname, '../../../api/openapi.yaml'), 'utf8');
 
 function quotaMiddleware(resource) {
   return async function enforceQuota(req, res, next) {
@@ -67,6 +70,10 @@ function createRouter() {
       build: process.env.BUILD_VERSION || 'dev',
       traceId: getTraceId(req),
     });
+  });
+
+  router.get('/openapi', (req, res) => {
+    res.type('application/yaml').send(OPENAPI_SPEC);
   });
 
   router.post('/auth/tokens', authMiddleware(), (req, res) => {
