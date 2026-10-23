@@ -204,6 +204,7 @@ class NetworkService {
     this.loadBalancers = new Map();
     this.targetGroups = new Map();
     this.listeners = new Map();
+    this.certificates = new Map();
   }
 
   createVpc(name, cidrBlock, projectId) {
@@ -419,6 +420,37 @@ class NetworkService {
   listListeners() {
     return [...this.listeners.values()].map((l) => l.toJSON());
   }
+
+  uploadCertificate(domainName, certificateBody, privateKey, certificateChain, projectId) {
+    const id = `cert_${crypto.randomBytes(8).toString('hex')}`;
+    const cert = new Certificate({
+      id,
+      domainName,
+      certificateBody,
+      privateKey,
+      certificateChain,
+      projectId,
+    });
+    this.certificates.set(id, cert);
+    return cert;
+  }
+
+  listCertificates() {
+    return [...this.certificates.values()].map((c) => c.toJSON());
+  }
+
+  getCertificate(id) {
+    return this.certificates.get(id) || null;
+  }
+
+  deleteCertificate(id) {
+    if (!this.certificates.has(id)) {
+      const err = new Error(`Certificate ${id} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+    this.certificates.delete(id);
+  }
 }
 
 class LoadBalancer {
@@ -509,6 +541,31 @@ class Listener {
   }
 }
 
+class Certificate {
+  constructor({ id, domainName, certificateBody, privateKey, certificateChain = '', projectId }) {
+    this.id = id;
+    this.domainName = domainName;
+    this.certificateBody = certificateBody;
+    this.privateKey = privateKey;
+    this.certificateChain = certificateChain;
+    this.projectId = projectId;
+    this.createdAt = new Date().toISOString();
+    this.expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      domain_name: this.domainName,
+      certificate_body: this.certificateBody,
+      certificate_chain: this.certificateChain,
+      project_id: this.projectId,
+      created_at: this.createdAt,
+      expires_at: this.expiresAt,
+    };
+  }
+}
+
 module.exports = {
   NetworkService,
   NetworkRule,
@@ -522,5 +579,6 @@ module.exports = {
   LoadBalancer,
   TargetGroup,
   Listener,
+  Certificate,
   cidrContains,
 };

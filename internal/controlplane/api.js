@@ -624,6 +624,59 @@ function createRouter() {
     })
   );
 
+  router.get(
+    '/ssl-certificates',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      res.json({
+        certificates: networkService.listCertificates(),
+        traceId: getTraceId(req),
+      });
+    })
+  );
+
+  router.post(
+    '/ssl-certificates',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const cert = networkService.uploadCertificate(
+        req.body.domain_name,
+        req.body.certificate_body,
+        req.body.private_key,
+        req.body.certificate_chain || '',
+        req.body.project_id
+      );
+      res.status(201).json({ certificate: cert.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/ssl-certificates/:id',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      const cert = networkService.getCertificate(req.params.id);
+      if (!cert) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'NOT_FOUND', message: 'Certificate not found' });
+      }
+      res.json({ certificate: cert.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.delete(
+    '/ssl-certificates/:id',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      networkService.deleteCertificate(req.params.id);
+      res.status(204).end();
+    })
+  );
+
   router.get('/dns/zones', authMiddleware(), requirePermission('dns:read'), (req, res) => {
     res.json({ zones: [], traceId: getTraceId(req) });
   });
