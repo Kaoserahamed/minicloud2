@@ -69,7 +69,7 @@ function createRouter() {
     });
   });
 
-  router.post('/auth/tokens', authMiddleware, (req, res) => {
+  router.post('/auth/tokens', authMiddleware(), (req, res) => {
     const { api_key } = req.body;
     if (!api_key) {
       return res.status(400).json({ success: false, error: 'api_key required' });
@@ -78,13 +78,13 @@ function createRouter() {
     res.json({ access_token: token, token_type: 'Bearer', expires_in: 86400 });
   });
 
-  router.get('/projects', authMiddleware, requirePermission('compute:read'), (req, res) => {
+  router.get('/projects', authMiddleware(), requirePermission('compute:read'), (req, res) => {
     res.json({ projects: [], traceId: getTraceId(req) });
   });
 
   router.post(
     '/projects',
-    authMiddleware,
+    authMiddleware(),
     requirePermission('compute:write'),
     quotaMiddleware('project'),
     (req, res) => {
@@ -94,21 +94,21 @@ function createRouter() {
     }
   );
 
-  router.get('/projects/:id', authMiddleware, requirePermission('compute:read'), (req, res) => {
+  router.get('/projects/:id', authMiddleware(), requirePermission('compute:read'), (req, res) => {
     res.json({ id: req.params.id, name: 'Project', traceId: getTraceId(req) });
   });
 
-  router.delete('/projects/:id', authMiddleware, requireRole('admin'), (req, res) => {
+  router.delete('/projects/:id', authMiddleware(), requireRole('admin'), (req, res) => {
     res.status(204).end();
   });
 
-  router.get('/instances', authMiddleware, requirePermission('compute:read'), (req, res) => {
+  router.get('/instances', authMiddleware(), requirePermission('compute:read'), (req, res) => {
     res.json({ instances: [], traceId: getTraceId(req) });
   });
 
   router.post(
     '/instances',
-    authMiddleware,
+    authMiddleware(),
     requirePermission('compute:write'),
     quotaMiddleware('instance'),
     (req, res) => {
@@ -123,19 +123,19 @@ function createRouter() {
     }
   );
 
-  router.get('/buckets', authMiddleware, requirePermission('storage:read'), (req, res) => {
+  router.get('/buckets', authMiddleware(), requirePermission('storage:read'), (req, res) => {
     res.json({ buckets: [], traceId: getTraceId(req) });
   });
 
-  router.get('/vpcs', authMiddleware, requirePermission('network:read'), (req, res) => {
+  router.get('/vpcs', authMiddleware(), requirePermission('network:read'), (req, res) => {
     res.json({ vpcs: [], traceId: getTraceId(req) });
   });
 
-  router.get('/dns/zones', authMiddleware, requirePermission('dns:read'), (req, res) => {
+  router.get('/dns/zones', authMiddleware(), requirePermission('dns:read'), (req, res) => {
     res.json({ zones: [], traceId: getTraceId(req) });
   });
 
-  router.get('/regions', authMiddleware, requirePermission('compute:read'), (req, res) => {
+  router.get('/regions', authMiddleware(), requirePermission('compute:read'), (req, res) => {
     res.json({
       regions: ['us-east-1', 'us-west-2', 'eu-west-1'],
       traceId: getTraceId(req),
@@ -144,7 +144,7 @@ function createRouter() {
 
   router.get(
     '/regions/:region/zones',
-    authMiddleware,
+    authMiddleware(),
     requirePermission('compute:read'),
     (req, res) => {
       const zones = { 'us-east-1': ['a', 'b'], 'us-west-2': ['a'], 'eu-west-1': ['a'] };
@@ -155,6 +155,14 @@ function createRouter() {
       });
     }
   );
+
+  router.use((err, req, res, _next) => {
+    res.status(err.statusCode || 500).json({
+      success: false,
+      error: err.message || err,
+      traceId: getTraceId(req),
+    });
+  });
 
   return router;
 }

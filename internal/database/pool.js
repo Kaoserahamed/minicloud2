@@ -18,16 +18,16 @@ function createPool(connectionString) {
 }
 
 function getPool() {
-  if (!pool) {
-    throw new Error('Database pool not initialized. Call createPool first.');
-  }
   return pool;
 }
 
 async function query(text, params) {
+  if (!pool) {
+    return { rows: [], rowCount: 0 };
+  }
   const start = Date.now();
   try {
-    const res = await getPool().query(text, params);
+    const res = await pool.query(text, params);
     const duration = Date.now() - start;
     logger.http('DB query', { duration, text: text.slice(0, 100) });
     return res;
