@@ -1,6 +1,6 @@
 {
   "name": "@minicloud/internal-storage",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "index.js",
-  "description": "Object storage internal domain"
+  "description": "Object storage: buckets, objects, pluggable drivers"
 }

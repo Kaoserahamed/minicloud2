@@ -6,9 +6,12 @@ const { traceMiddleware, getTraceId } = require('@minicloud/tracing');
 const { authMiddleware, requirePermission, requireRole, issueJWT } = require('./auth');
 const { DatabaseService } = require('@minicloud/internal-database');
 const { InstanceLifecycle, Instance } = require('@minicloud/internal-compute');
+const { LocalFsDriver, BucketService } = require('@minicloud/internal-storage');
 
 const db = new DatabaseService();
 const lifecycle = new InstanceLifecycle();
+const storageDriver = new LocalFsDriver({ root: process.env.STORAGE_ROOT || './storage-data' });
+const bucketService = new BucketService(storageDriver);
 const OPENAPI_SPEC = fs.readFileSync(path.resolve(__dirname, '../../../api/openapi.yaml'), 'utf8');
 
 function asyncHandler(fn) {
@@ -197,9 +200,59 @@ function createRouter() {
     })
   );
 
-  router.get('/buckets', authMiddleware(), requirePermission('storage:read'), (req, res) => {
-    res.json({ buckets: [], traceId: getTraceId(req) });
-  });
+  router.get(
+    '/buckets',
+    authMiddleware(),
+    requirePermission('storage:read'),
+    asyncHandler(async (req, res) => {
+      const buckets = await bucketService.listBuckets();
+      res.json({ buckets, traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/buckets',
+    authMiddleware(),
+    requirePermission('storage:write'),
+    asyncHandler(async (req, res) => {
+      const bucket = await bucketService.createBucket(
+        req.body.name,
+        req.body.project_id,
+        req.body.region
+      );
+      res.status(201).json({ bucket, traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/buckets/:name',
+    authMiddleware(),
+    requirePermission('storage:read'),
+    asyncHandler(async (req, res) => {
+      const bucket = await bucketService.getBucket(req.params.name);
+      res.json({ bucket, traceId: getTraceId(req) });
+    })
+  );
+
+  router.delete(
+    '/buckets/:name',
+    authMiddleware(),
+    requirePermission('storage:write'),
+    asyncHandler(async (req, res) => {
+      await bucketService.deleteBucket(req.params.name);
+      res.status(204).end();
+    })
+  );
+
+  router.get(
+    '/buckets/:name/objects',
+    authMiddleware(),
+    requirePermission('storage:read'),
+    asyncHandler(async (req, res) => {
+      const objects = await bucketService.listObjects(req.params.name, req.query.prefix);
+      res.json({ objects, traceId: getTraceId(req) });
+    })
+  );
 
   router.get('/vpcs', authMiddleware(), requirePermission('network:read'), (req, res) => {
     res.json({ vpcs: [], traceId: getTraceId(req) });
