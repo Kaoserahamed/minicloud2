@@ -1,0 +1,478 @@
+openapi: 3.0.3
+info:
+  title: MiniCloud API
+  version: 0.1.0-foundation
+  description: |
+    MiniCloud: a self-hostable micro cloud platform for developers.
+    Covers compute, object storage, VPC networking, managed databases, and DNS.
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.minicloud.example.com
+    description: Production server
+tags:
+  - name: compute
+    description: Compute instances
+  - name: storage
+    description: Object storage buckets and objects
+  - name: network
+    description: VPC, subnets, security groups, load balancers
+  - name: database
+    description: Managed database instances
+  - name: dns
+    description: DNS hosted zones and record sets
+  - name: auth
+    description: Authentication and authorization
+security:
+  - bearerAuth: []
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      tags: [compute]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /readyz:
+    get:
+      summary: Readiness check
+      tags: [compute]
+      responses:
+        '200':
+          description: Ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready
+  /version:
+    get:
+      summary: Version and build info
+      tags: [compute]
+      responses:
+        '200':
+          description: Version info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                  build:
+                    type: string
+  /projects:
+    get:
+      summary: List projects
+      tags: [compute]
+      security: []
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+    post:
+      summary: Create a project
+      tags: [compute]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+  /projects/{id}:
+    get:
+      summary: Get a project
+      tags: [compute]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          description: Not found
+    delete:
+      summary: Delete a project
+      tags: [compute]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+  /instances:
+    get:
+      summary: List instances
+      tags: [compute]
+      responses:
+        '200':
+          description: List of instances
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  instances:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Instance'
+    post:
+      summary: Create an instance
+      tags: [compute]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInstanceRequest'
+      responses:
+        '201':
+          description: Instance created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instance'
+  /instances/{id}:
+    get:
+      summary: Get an instance
+      tags: [compute]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Instance detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instance'
+        '404':
+          description: Not found
+    delete:
+      summary: Delete an instance
+      tags: [compute]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+  /buckets:
+    get:
+      summary: List buckets
+      tags: [storage]
+      responses:
+        '200':
+          description: List of buckets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  buckets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bucket'
+    post:
+      summary: Create a bucket
+      tags: [storage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBucketRequest'
+      responses:
+        '201':
+          description: Bucket created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bucket'
+  /buckets/{name}:
+    get:
+      summary: Get a bucket
+      tags: [storage]
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bucket detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bucket'
+        '404':
+          description: Not found
+    delete:
+      summary: Delete a bucket
+      tags: [storage]
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+  /vpcs:
+    get:
+      summary: List VPCs
+      tags: [network]
+      responses:
+        '200':
+          description: List of VPCs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vpcs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VPC'
+    post:
+      summary: Create a VPC
+      tags: [network]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVPCRequest'
+      responses:
+        '201':
+          description: VPC created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VPC'
+  /dns/zones:
+    get:
+      summary: List DNS zones
+      tags: [dns]
+      responses:
+        '200':
+          description: List of zones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  zones:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DNSZone'
+    post:
+      summary: Create a DNS zone
+      tags: [dns]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDNSZoneRequest'
+      responses:
+        '201':
+          description: Zone created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DNSZone'
+  /auth/tokens:
+    post:
+      summary: Issue a JWT token
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+      responses:
+        '200':
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    CreateProjectRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+    Instance:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        project_id:
+          type: string
+        state:
+          type: string
+          enum: [pending, running, stopped, terminated]
+        region:
+          type: string
+    CreateInstanceRequest:
+      type: object
+      required:
+        - name, project_id, region
+      properties:
+        name:
+          type: string
+        project_id:
+          type: string
+        region:
+          type: string
+        image:
+          type: string
+    Bucket:
+      type: object
+      properties:
+        name:
+          type: string
+        project_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    CreateBucketRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        project_id:
+          type: string
+    VPC:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        project_id:
+          type: string
+        cidr_block:
+          type: string
+    CreateVPCRequest:
+      type: object
+      required:
+        - name, project_id, cidr_block
+      properties:
+        name:
+          type: string
+        project_id:
+          type: string
+        cidr_block:
+          type: string
+    DNSZone:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        project_id:
+          type: string
+    CreateDNSZoneRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        project_id:
+          type: string
+    TokenRequest:
+      type: object
+      required:
+        - api_key
+      properties:
+        api_key:
+          type: string
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer

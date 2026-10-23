@@ -1,0 +1,6 @@
+{
+  "name": "@minicloud/api",
+  "version": "0.1.0",
+  "main": "openapi.yaml",
+  "description": "OpenAPI spec for MiniCloud REST API"
+}
