@@ -1,0 +1,6 @@
+{
+  "name": "@minicloud/internal-monitoring",
+  "version": "0.1.0",
+  "main": "index.js",
+  "description": "Monitoring and observability internal domain"
+}

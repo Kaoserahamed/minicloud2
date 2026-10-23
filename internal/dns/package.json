@@ -1,0 +1,6 @@
+{
+  "name": "@minicloud/internal-dns",
+  "version": "0.1.0",
+  "main": "index.js",
+  "description": "DNS management internal domain"
+}

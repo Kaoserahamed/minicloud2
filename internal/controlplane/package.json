@@ -1,0 +1,6 @@
+{
+  "name": "@minicloud/internal-controlplane",
+  "version": "0.1.0",
+  "main": "index.js",
+  "description": "Control plane internal domain: auth, RBAC, scheduling, resource orchestration"
+}

@@ -1,0 +1,6 @@
+{
+  "name": "@minicloud/internal-compute",
+  "version": "0.1.0",
+  "main": "index.js",
+  "description": "Compute instance internal domain"
+}

@@ -1,0 +1,6 @@
+{
+  "name": "@minicloud/internal-dataplane",
+  "version": "0.1.0",
+  "main": "index.js",
+  "description": "Data plane internal domain: agent, instance execution, networking"
+}
