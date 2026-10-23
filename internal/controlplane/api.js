@@ -18,7 +18,7 @@ const bucketService = new BucketService(storageDriver);
 const networkService = new NetworkService();
 const autoScalingService = new AutoScalingService();
 const managedDbService = new ManagedDatabaseService();
-const OPENAPI_SPEC = fs.readFileSync(path.resolve(__dirname, '../../../api/openapi.yaml'), 'utf8');
+const OPENAPI_SPEC = fs.readFileSync(path.resolve(__dirname, '../../api/openapi.yaml'), 'utf8');
 
 function asyncHandler(fn) {
   return (req, res, next) => {
