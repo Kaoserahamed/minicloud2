@@ -1,0 +1,7 @@
+node_modules/
+dist/
+build/
+package-lock.json
+.eslintrc.cjs
+.kilo/kilo.jsonc
+IMPLEMENTATION_PLAN.md
