@@ -190,7 +190,7 @@ class LocalFsDriver extends StorageDriver {
     return {
       url: `/storage/${bucketName}/${key}?x-presign=${token}&x-op=${operation}`,
       expiresIn: expiration || 3600,
-      method: operation === 'upload' ? 'PUT' : 'GET',
+      method: operation === 'put' || operation === 'upload' ? 'PUT' : 'GET',
     };
   }
 }

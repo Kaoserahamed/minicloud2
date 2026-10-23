@@ -256,6 +256,47 @@ function createRouter() {
     })
   );
 
+  router.post(
+    '/buckets/:name/objects/:key/presigned-url',
+    authMiddleware(),
+    requirePermission('storage:read'),
+    asyncHandler(async (req, res) => {
+      const { operation = 'get', expiration = 3600 } = req.body;
+      const url = await bucketService.generatePresignedUrl(
+        req.params.name,
+        req.params.key,
+        operation,
+        expiration
+      );
+      res.json({ url, traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/buckets/:name/objects/:key/multipart',
+    authMiddleware(),
+    requirePermission('storage:write'),
+    asyncHandler(async (req, res) => {
+      const { action } = req.body;
+      if (action === 'initiate') {
+        const uploadId = `mp_${Date.now()}`;
+        res.status(201).json({ upload_id: uploadId, traceId: getTraceId(req) });
+      } else if (action === 'complete') {
+        const { uploadId, parts } = req.body;
+        res.json({
+          upload_id: uploadId,
+          parts_received: parts ? parts.length : 0,
+          traceId: getTraceId(req),
+        });
+      } else if (action === 'abort') {
+        const { uploadId } = req.body;
+        res.json({ upload_id: uploadId, aborted: true, traceId: getTraceId(req) });
+      } else {
+        res.status(400).json({ success: false, error: 'INVALID_ACTION', traceId: getTraceId(req) });
+      }
+    })
+  );
+
   router.put(
     '/buckets/:name/objects/:key',
     authMiddleware(),
@@ -359,12 +400,10 @@ function createRouter() {
         req.body.vpc_id,
         req.body.description
       );
-      res
-        .status(201)
-        .json({
-          security_group: { id: sg.id, name: sg.name, vpc_id: sg.vpcId },
-          traceId: getTraceId(req),
-        });
+      res.status(201).json({
+        security_group: { id: sg.id, name: sg.name, vpc_id: sg.vpcId },
+        traceId: getTraceId(req),
+      });
     })
   );
 
@@ -403,12 +442,10 @@ function createRouter() {
     requirePermission('network:write'),
     asyncHandler(async (req, res) => {
       const nacl = networkService.createNetworkAcl(req.body.name, req.body.subnet_id);
-      res
-        .status(201)
-        .json({
-          network_acl: { id: nacl.id, name: nacl.name, subnet_id: nacl.subnetId },
-          traceId: getTraceId(req),
-        });
+      res.status(201).json({
+        network_acl: { id: nacl.id, name: nacl.name, subnet_id: nacl.subnetId },
+        traceId: getTraceId(req),
+      });
     })
   );
 
@@ -450,12 +487,10 @@ function createRouter() {
     requirePermission('network:write'),
     asyncHandler(async (req, res) => {
       const igw = networkService.createInternetGateway(req.body.vpc_id);
-      res
-        .status(201)
-        .json({
-          internet_gateway: { id: igw.id, vpc_id: igw.vpcId, attached: igw.attached },
-          traceId: getTraceId(req),
-        });
+      res.status(201).json({
+        internet_gateway: { id: igw.id, vpc_id: igw.vpcId, attached: igw.attached },
+        traceId: getTraceId(req),
+      });
     })
   );
 
@@ -474,12 +509,10 @@ function createRouter() {
     requirePermission('network:write'),
     asyncHandler(async (req, res) => {
       const eip = networkService.allocateElasticIp(req.body.project_id);
-      res
-        .status(201)
-        .json({
-          elastic_ip: { id: eip.id, ip: eip.ip, project_id: eip.projectId },
-          traceId: getTraceId(req),
-        });
+      res.status(201).json({
+        elastic_ip: { id: eip.id, ip: eip.ip, project_id: eip.projectId },
+        traceId: getTraceId(req),
+      });
     })
   );
 
