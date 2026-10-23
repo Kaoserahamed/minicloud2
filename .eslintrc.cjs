@@ -1,6 +1,6 @@
 module.exports = {
   env: { node: true },
-  globals: { Promise: 'readonly' },
+  globals: { Promise: 'readonly', Map: 'readonly', Set: 'readonly', AbortController: 'readonly' },
   extends: 'eslint:recommended',
   parserOptions: {
     ecmaVersion: 2022,
