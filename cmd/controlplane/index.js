@@ -20,7 +20,7 @@ app.use(traceMiddleware());
 
 app.use('/api', createRouter());
 
-app.use((err, req, res) => {
+app.use((err, req, res, _next) => {
   logger.error(err.message, { traceId: req.traceId, stack: err.stack });
   const statusCode = err.statusCode || 500;
   res.status(statusCode).json({

@@ -3,11 +3,19 @@ const { UnauthorizedError, ForbiddenError } = require('@minicloud/errors');
 
 const RBAC_ROLES = {
   admin: ['*'],
-  user: ['compute:read', 'compute:write', 'storage:read', 'storage:write',
-    'network:read', 'network:write', 'database:read', 'database:write',
-    'dns:read', 'dns:write'],
-  viewer: ['compute:read', 'storage:read', 'network:read',
-    'database:read', 'dns:read'],
+  user: [
+    'compute:read',
+    'compute:write',
+    'storage:read',
+    'storage:write',
+    'network:read',
+    'network:write',
+    'database:read',
+    'database:write',
+    'dns:read',
+    'dns:write',
+  ],
+  viewer: ['compute:read', 'storage:read', 'network:read', 'database:read', 'dns:read'],
 };
 
 function hasPermission(role, permission) {
