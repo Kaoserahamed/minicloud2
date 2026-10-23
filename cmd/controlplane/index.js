@@ -1,7 +1,9 @@
 #!/usr/bin/env node
+
 const { loadConfig, validateConfig } = require('@minicloud/config');
 const { logger } = require('@minicloud/logging');
 const { traceMiddleware } = require('@minicloud/tracing');
+const { createRouter } = require('@minicloud/internal-controlplane');
 
 const config = loadConfig();
 const validationErrors = validateConfig(config);
@@ -16,21 +18,7 @@ const app = express();
 app.use(express.json());
 app.use(traceMiddleware());
 
-app.get('/healthz', (req, res) => {
-  res.json({ status: 'ok', traceId: req.traceId });
-});
-
-app.get('/readyz', (req, res) => {
-  res.json({ status: 'ready', traceId: req.traceId });
-});
-
-app.get('/version', (req, res) => {
-  res.json({
-    version: process.env.npm_package_version || '0.1.0-foundation',
-    build: process.env.BUILD_VERSION || 'dev',
-    traceId: req.traceId,
-  });
-});
+app.use('/api', createRouter());
 
 app.use((err, req, res) => {
   logger.error(err.message, { traceId: req.traceId, stack: err.stack });
