@@ -5,9 +5,21 @@ const { logger } = require('@minicloud/logging');
 const { traceMiddleware, getTraceId } = require('@minicloud/tracing');
 const { authMiddleware, requirePermission, requireRole, issueJWT } = require('./auth');
 const { DatabaseService } = require('@minicloud/internal-database');
+const { InstanceLifecycle, Instance } = require('@minicloud/internal-compute');
 
 const db = new DatabaseService();
+const lifecycle = new InstanceLifecycle();
 const OPENAPI_SPEC = fs.readFileSync(path.resolve(__dirname, '../../../api/openapi.yaml'), 'utf8');
+
+function asyncHandler(fn) {
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
+lifecycle.loadInstances().catch((err) => {
+  logger.warn('Failed to load instances from database', { message: err.message });
+});
 
 function quotaMiddleware(resource) {
   return async function enforceQuota(req, res, next) {
@@ -109,25 +121,80 @@ function createRouter() {
     res.status(204).end();
   });
 
-  router.get('/instances', authMiddleware(), requirePermission('compute:read'), (req, res) => {
-    res.json({ instances: [], traceId: getTraceId(req) });
-  });
+  router.get(
+    '/instances',
+    authMiddleware(),
+    requirePermission('compute:read'),
+    asyncHandler(async (req, res) => {
+      const instances = lifecycle.list().map((i) => i.toJSON());
+      res.json({ instances, traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/instances/:id',
+    authMiddleware(),
+    requirePermission('compute:read'),
+    asyncHandler(async (req, res) => {
+      const instance = lifecycle.get(req.params.id);
+      if (!instance) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'NOT_FOUND', message: 'Instance not found' });
+      }
+      res.json({ instance: instance.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/instances/:id/start',
+    authMiddleware(),
+    requirePermission('compute:write'),
+    asyncHandler(async (req, res) => {
+      const instance = await lifecycle.start(req.params.id);
+      res.json({ instance: instance.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/instances/:id/stop',
+    authMiddleware(),
+    requirePermission('compute:write'),
+    asyncHandler(async (req, res) => {
+      const instance = await lifecycle.stop(req.params.id);
+      res.json({ instance: instance.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.delete(
+    '/instances/:id',
+    authMiddleware(),
+    requirePermission('compute:write'),
+    asyncHandler(async (req, res) => {
+      await lifecycle.delete(req.params.id);
+      res.status(204).end();
+    })
+  );
 
   router.post(
     '/instances',
     authMiddleware(),
     requirePermission('compute:write'),
     quotaMiddleware('instance'),
-    (req, res) => {
-      res.status(201).json({
+    asyncHandler(async (req, res) => {
+      const instance = new Instance({
         id: 'inst_' + Date.now(),
         name: req.body.name,
-        project_id: req.body.project_id,
-        state: 'pending',
+        projectId: req.body.project_id,
         region: req.body.region,
-        traceId: getTraceId(req),
+        image: req.body.image,
+        cpu: req.body.cpu,
+        ramMb: req.body.ramMb,
+        storageGb: req.body.storageGb,
       });
-    }
+      await lifecycle.create(instance);
+      res.status(201).json({ instance: instance.toJSON(), traceId: getTraceId(req) });
+    })
   );
 
   router.get('/buckets', authMiddleware(), requirePermission('storage:read'), (req, res) => {
