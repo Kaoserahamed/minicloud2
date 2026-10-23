@@ -1,0 +1,21 @@
+# CODEOWNERS
+
+# Global ownership
+* @minicloud-maintainers
+
+# Control plane
+/cmd/controlplane/ @minicloud-controlplane
+/internal/controlplane/ @minicloud-controlplane
+
+# Data plane
+/cmd/dataplane/ @minicloud-dataplane
+/internal/dataplane/ @minicloud-dataplane
+
+# CLI
+/cmd/cli/ @minicloud-cli
+
+# Packages
+/pkg/ @minicloud-platform
+
+# API
+/api/ @minicloud-api

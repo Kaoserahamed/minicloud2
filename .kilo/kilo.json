@@ -1,0 +1,21 @@
+{
+  "name": "minicloud",
+  "description": "MiniCloud monorepo - self-hostable micro cloud platform",
+  "commands": {
+    "lint": "npm run lint",
+    "fmt": "npm run fmt",
+    "test": "npm test",
+    "build": "npm run build"
+  },
+  "agents": {
+    "default": "kilo"
+  },
+  "permissions": {
+    "bash": true,
+    "edit": true,
+    "write": true,
+    "glob": true,
+    "grep": true,
+    "read": true
+  }
+}

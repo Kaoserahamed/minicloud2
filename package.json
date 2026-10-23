@@ -1,0 +1,37 @@
+{
+  "name": "minicloud",
+  "private": true,
+  "version": "0.1.0-foundation",
+  "description": "MiniCloud: a self-hostable micro cloud platform for developers",
+  "workspaces": [
+    "cmd/*",
+    "internal/*",
+    "pkg/*",
+    "api/*",
+    "cli/*",
+    "terraform/*",
+    "web/*",
+    "tests/*",
+    "infra/*"
+  ],
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node --test ./tests/**/*.test.js",
+    "lint": "eslint .",
+    "fmt": "prettier --write .",
+    "start:controlplane": "node cmd/controlplane/index.js",
+    "start:dataplane": "node cmd/dataplane/index.js",
+    "start:cli": "node cmd/cli/index.js"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "js-yaml": "^4.3.2",
+    "prettier": "^3.9.10"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}
