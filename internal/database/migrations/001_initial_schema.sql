@@ -1,0 +1,58 @@
+-- Up migration
+CREATE TABLE IF NOT EXISTS projects (
+  id VARCHAR(255) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(255) PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  role VARCHAR(50) DEFAULT 'user',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS roles (
+  id VARCHAR(255) PRIMARY KEY,
+  name VARCHAR(50) UNIQUE NOT NULL,
+  permissions JSONB DEFAULT '[]'
+);
+
+CREATE TABLE IF NOT EXISTS resources (
+  id VARCHAR(255) PRIMARY KEY,
+  project_id VARCHAR(255) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  name VARCHAR(255),
+  state VARCHAR(50) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id VARCHAR(255) PRIMARY KEY,
+  user_id VARCHAR(255),
+  action VARCHAR(255) NOT NULL,
+  resource_type VARCHAR(100),
+  resource_id VARCHAR(255),
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS quotas (
+  id VARCHAR(255) PRIMARY KEY,
+  project_id VARCHAR(255) UNIQUE NOT NULL,
+  cpu INTEGER DEFAULT 0,
+  ram_mb INTEGER DEFAULT 0,
+  storage_gb INTEGER DEFAULT 0,
+  instances INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT fk_quota_project FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+-- Down migration
+DROP TABLE IF EXISTS quotas;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS resources;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS projects;

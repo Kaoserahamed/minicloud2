@@ -2,5 +2,8 @@
   "name": "@minicloud/internal-database",
   "version": "0.1.0",
   "main": "index.js",
-  "description": "Managed database internal domain"
+  "description": "Managed database internal domain: connection pool, schema, migrations",
+  "dependencies": {
+    "pg": "^8.11.3"
+  }
 }
