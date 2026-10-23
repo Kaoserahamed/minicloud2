@@ -1,0 +1,9 @@
+{
+  "name": "@minicloud/dataplane",
+  "version": "0.1.0",
+  "main": "index.js",
+  "bin": {
+    "mc-dataplane": "index.js"
+  },
+  "description": "MiniCloud data plane agent entrypoint"
+}

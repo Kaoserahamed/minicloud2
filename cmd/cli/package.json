@@ -1,0 +1,9 @@
+{
+  "name": "@minicloud/cli",
+  "version": "0.1.0",
+  "main": "index.js",
+  "bin": {
+    "mc": "index.js"
+  },
+  "description": "MiniCloud CLI entrypoint"
+}
