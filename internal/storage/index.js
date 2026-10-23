@@ -120,7 +120,13 @@ class LocalFsDriver extends StorageDriver {
       stream.on('data', (chunk) => ws.write(chunk));
       stream.on('end', () => {
         ws.end();
-        resolve({ size, contentType, etag: crypto.createHash('md5').update(key).digest('hex') });
+      });
+      ws.on('finish', () => {
+        resolve({
+          size,
+          contentType,
+          etag: crypto.createHash('md5').update(key).digest('hex'),
+        });
       });
       stream.on('error', (err) => {
         ws.destroy();
@@ -167,7 +173,7 @@ class LocalFsDriver extends StorageDriver {
     const walk = (dir, relPrefix) => {
       for (const entry of fs.readdirSync(dir)) {
         const fullPath = path.join(dir, entry);
-        const rel = path.join(relPrefix, entry);
+        const rel = path.join(relPrefix, entry).replace(/\\/g, '/');
         if (fs.statSync(fullPath).isDirectory()) {
           walk(fullPath, rel);
         } else if (rel.startsWith(prefix)) {

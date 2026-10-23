@@ -254,6 +254,47 @@ function createRouter() {
     })
   );
 
+  router.put(
+    '/buckets/:name/objects/:key',
+    authMiddleware(),
+    requirePermission('storage:write'),
+    asyncHandler(async (req, res) => {
+      const result = await bucketService.putObject(
+        req.params.name,
+        req.params.key,
+        req,
+        req.headers['content-length'] ? parseInt(req.headers['content-length'], 10) : undefined,
+        req.headers['content-type']
+      );
+      res.status(200).json({ key: req.params.key, etag: result.etag, size: result.size });
+    })
+  );
+
+  router.get(
+    '/buckets/:name/objects/:key',
+    authMiddleware(),
+    requirePermission('storage:read'),
+    asyncHandler(async (req, res) => {
+      const { stream, size, contentType } = await bucketService.getObject(
+        req.params.name,
+        req.params.key
+      );
+      res.setHeader('Content-Length', size);
+      res.setHeader('Content-Type', contentType);
+      stream.pipe(res);
+    })
+  );
+
+  router.delete(
+    '/buckets/:name/objects/:key',
+    authMiddleware(),
+    requirePermission('storage:write'),
+    asyncHandler(async (req, res) => {
+      await bucketService.deleteObject(req.params.name, req.params.key);
+      res.status(204).end();
+    })
+  );
+
   router.get('/vpcs', authMiddleware(), requirePermission('network:read'), (req, res) => {
     res.json({ vpcs: [], traceId: getTraceId(req) });
   });
