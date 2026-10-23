@@ -201,6 +201,9 @@ class NetworkService {
     this.networkAcls = new Map();
     this.internetGateways = new Map();
     this.elasticIps = new Map();
+    this.loadBalancers = new Map();
+    this.targetGroups = new Map();
+    this.listeners = new Map();
   }
 
   createVpc(name, cidrBlock, projectId) {
@@ -357,6 +360,153 @@ class NetworkService {
       associated_instance_id: e.associatedInstanceId,
     }));
   }
+
+  createLoadBalancer(name, vpcId, subnets = [], type = 'application') {
+    if (!this.vpcs.has(vpcId)) {
+      const err = new Error(`VPC ${vpcId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+    const id = `lb_${crypto.randomBytes(8).toString('hex')}`;
+    const lb = new LoadBalancer({ id, name, vpcId, subnets, type });
+    this.loadBalancers.set(id, lb);
+    return lb;
+  }
+
+  listLoadBalancers() {
+    return [...this.loadBalancers.values()].map((lb) => lb.toJSON());
+  }
+
+  getLoadBalancer(id) {
+    return this.loadBalancers.get(id) || null;
+  }
+
+  createTargetGroup(name, vpcId, protocol = 'HTTP', port = 80, targetType = 'instance') {
+    if (!this.vpcs.has(vpcId)) {
+      const err = new Error(`VPC ${vpcId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+    const id = `tg_${crypto.randomBytes(8).toString('hex')}`;
+    const tg = new TargetGroup({ id, name, vpcId, protocol, port, targetType });
+    this.targetGroups.set(id, tg);
+    return tg;
+  }
+
+  listTargetGroups() {
+    return [...this.targetGroups.values()].map((tg) => tg.toJSON());
+  }
+
+  createListener(loadBalancerId, protocol, port, targetGroupId) {
+    const lb = this.loadBalancers.get(loadBalancerId);
+    if (!lb) {
+      const err = new Error(`Load balancer ${loadBalancerId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+    const tg = this.targetGroups.get(targetGroupId);
+    if (!tg) {
+      const err = new Error(`Target group ${targetGroupId} not found`);
+      err.statusCode = 404;
+      throw err;
+    }
+    const id = `listener_${crypto.randomBytes(8).toString('hex')}`;
+    const listener = new Listener({ id, loadBalancerId, protocol, port, targetGroupId });
+    this.listeners.set(id, listener);
+    return listener;
+  }
+
+  listListeners() {
+    return [...this.listeners.values()].map((l) => l.toJSON());
+  }
+}
+
+class LoadBalancer {
+  constructor({ id, name, vpcId, subnets = [], type = 'application' }) {
+    this.id = id;
+    this.name = name;
+    this.vpcId = vpcId;
+    this.subnets = subnets;
+    this.type = type;
+    this.dnsName = `${name}.elb.${vpcId}.minicloud.local`;
+    this.state = 'active';
+    this.createdAt = new Date().toISOString();
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      name: this.name,
+      vpc_id: this.vpcId,
+      subnets: this.subnets,
+      type: this.type,
+      dns_name: this.dnsName,
+      state: this.state,
+      created_at: this.createdAt,
+    };
+  }
+}
+
+class TargetGroup {
+  constructor({ id, name, vpcId, protocol = 'HTTP', port = 80, targetType = 'instance' }) {
+    this.id = id;
+    this.name = name;
+    this.vpcId = vpcId;
+    this.protocol = protocol;
+    this.port = port;
+    this.targetType = targetType;
+    this.targets = [];
+    this.createdAt = new Date().toISOString();
+  }
+
+  registerTarget(targetId) {
+    if (!this.targets.includes(targetId)) {
+      this.targets.push(targetId);
+    }
+  }
+
+  deregisterTarget(targetId) {
+    this.targets = this.targets.filter((t) => t !== targetId);
+  }
+
+  healthCheck() {
+    return this.targets.map((t) => ({ target_id: t, state: 'healthy' }));
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      name: this.name,
+      vpc_id: this.vpcId,
+      protocol: this.protocol,
+      port: this.port,
+      target_type: this.targetType,
+      targets: this.targets,
+      created_at: this.createdAt,
+    };
+  }
+}
+
+class Listener {
+  constructor({ id, loadBalancerId, protocol, port, targetGroupId }) {
+    this.id = id;
+    this.loadBalancerId = loadBalancerId;
+    this.protocol = protocol;
+    this.port = port;
+    this.targetGroupId = targetGroupId;
+    this.createdAt = new Date().toISOString();
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      load_balancer_id: this.loadBalancerId,
+      protocol: this.protocol,
+      port: this.port,
+      target_group_id: this.targetGroupId,
+      created_at: this.createdAt,
+    };
+  }
 }
 
 module.exports = {
@@ -369,5 +519,8 @@ module.exports = {
   RouteTable,
   InternetGateway,
   ElasticIp,
+  LoadBalancer,
+  TargetGroup,
+  Listener,
   cidrContains,
 };

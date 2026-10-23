@@ -529,6 +529,101 @@ function createRouter() {
     })
   );
 
+  router.get(
+    '/load-balancers',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      res.json({
+        load_balancers: networkService.listLoadBalancers(),
+        traceId: getTraceId(req),
+      });
+    })
+  );
+
+  router.post(
+    '/load-balancers',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const lb = networkService.createLoadBalancer(
+        req.body.name,
+        req.body.vpc_id,
+        req.body.subnets || [],
+        req.body.type || 'application'
+      );
+      res.status(201).json({ load_balancer: lb.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/target-groups',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      res.json({
+        target_groups: networkService.listTargetGroups(),
+        traceId: getTraceId(req),
+      });
+    })
+  );
+
+  router.post(
+    '/target-groups',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const tg = networkService.createTargetGroup(
+        req.body.name,
+        req.body.vpc_id,
+        req.body.protocol || 'HTTP',
+        req.body.port || 80,
+        req.body.target_type || 'instance'
+      );
+      res.status(201).json({ target_group: tg.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/target-groups/:id/targets',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const tg = networkService.targetGroups.get(req.params.id);
+      if (!tg) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'NOT_FOUND', message: 'Target group not found' });
+      }
+      tg.registerTarget(req.body.target_id);
+      res.json({ target_group: tg.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/listeners',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const listener = networkService.createListener(
+        req.body.load_balancer_id,
+        req.body.protocol,
+        req.body.port,
+        req.body.target_group_id
+      );
+      res.status(201).json({ listener: listener.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/listeners',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      res.json({ listeners: networkService.listListeners(), traceId: getTraceId(req) });
+    })
+  );
+
   router.get('/dns/zones', authMiddleware(), requirePermission('dns:read'), (req, res) => {
     res.json({ zones: [], traceId: getTraceId(req) });
   });
