@@ -1,6 +1,6 @@
 {
   "name": "@minicloud/internal-network",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "index.js",
-  "description": "VPC networking internal domain"
+  "description": "VPC networking: VPCs, subnets, route tables, internet gateway, security groups, NACLs"
 }

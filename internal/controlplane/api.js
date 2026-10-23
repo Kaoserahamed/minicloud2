@@ -7,11 +7,13 @@ const { authMiddleware, requirePermission, requireRole, issueJWT } = require('./
 const { DatabaseService } = require('@minicloud/internal-database');
 const { InstanceLifecycle, Instance } = require('@minicloud/internal-compute');
 const { LocalFsDriver, BucketService } = require('@minicloud/internal-storage');
+const { NetworkService } = require('@minicloud/internal-network');
 
 const db = new DatabaseService();
 const lifecycle = new InstanceLifecycle();
 const storageDriver = new LocalFsDriver({ root: process.env.STORAGE_ROOT || './storage-data' });
 const bucketService = new BucketService(storageDriver);
+const networkService = new NetworkService();
 const OPENAPI_SPEC = fs.readFileSync(path.resolve(__dirname, '../../../api/openapi.yaml'), 'utf8');
 
 function asyncHandler(fn) {
@@ -295,9 +297,204 @@ function createRouter() {
     })
   );
 
-  router.get('/vpcs', authMiddleware(), requirePermission('network:read'), (req, res) => {
-    res.json({ vpcs: [], traceId: getTraceId(req) });
-  });
+  router.get(
+    '/vpcs',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      res.json({ vpcs: networkService.listVpcs(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/vpcs',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const vpc = networkService.createVpc(req.body.name, req.body.cidr_block, req.body.project_id);
+      res.status(201).json({ vpc: vpc.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/subnets',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      res.json({ subnets: networkService.listSubnets(req.query.vpc_id), traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/subnets',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const subnet = networkService.createSubnet(
+        req.body.name,
+        req.body.vpc_id,
+        req.body.cidr_block,
+        req.body.availability_zone
+      );
+      res.status(201).json({ subnet: subnet.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/security-groups',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      res.json({ security_groups: [], traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/security-groups',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const sg = networkService.createSecurityGroup(
+        req.body.name,
+        req.body.vpc_id,
+        req.body.description
+      );
+      res
+        .status(201)
+        .json({
+          security_group: { id: sg.id, name: sg.name, vpc_id: sg.vpcId },
+          traceId: getTraceId(req),
+        });
+    })
+  );
+
+  router.post(
+    '/security-groups/:id/rules',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const rule = networkService.addSecurityGroupRule(req.params.id, req.body);
+      res.status(201).json({ rule, traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/security-groups/:id/evaluate',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      const allowed = networkService.evaluateSecurityGroup(req.params.id, req.body);
+      res.json({ allowed, traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/network-acls',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      res.json({ network_acls: [], traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/network-acls',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const nacl = networkService.createNetworkAcl(req.body.name, req.body.subnet_id);
+      res
+        .status(201)
+        .json({
+          network_acl: { id: nacl.id, name: nacl.name, subnet_id: nacl.subnetId },
+          traceId: getTraceId(req),
+        });
+    })
+  );
+
+  router.post(
+    '/network-acls/:id/rules',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const rule = networkService.addNetworkAclRule(req.params.id, req.body);
+      res.status(201).json({ rule, traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/network-acls/:id/evaluate',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      const allowed = networkService.evaluateNetworkAcl(req.params.id, req.body);
+      res.json({ allowed, traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/internet-gateways',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      res.json({
+        internet_gateways: networkService.listInternetGateways(),
+        traceId: getTraceId(req),
+      });
+    })
+  );
+
+  router.post(
+    '/internet-gateways',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const igw = networkService.createInternetGateway(req.body.vpc_id);
+      res
+        .status(201)
+        .json({
+          internet_gateway: { id: igw.id, vpc_id: igw.vpcId, attached: igw.attached },
+          traceId: getTraceId(req),
+        });
+    })
+  );
+
+  router.get(
+    '/elastic-ips',
+    authMiddleware(),
+    requirePermission('network:read'),
+    asyncHandler(async (req, res) => {
+      res.json({ elastic_ips: networkService.listElasticIps(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/elastic-ips',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const eip = networkService.allocateElasticIp(req.body.project_id);
+      res
+        .status(201)
+        .json({
+          elastic_ip: { id: eip.id, ip: eip.ip, project_id: eip.projectId },
+          traceId: getTraceId(req),
+        });
+    })
+  );
+
+  router.post(
+    '/elastic-ips/:id/associate',
+    authMiddleware(),
+    requirePermission('network:write'),
+    asyncHandler(async (req, res) => {
+      const eip = networkService.associateElasticIp(req.params.id, req.body.instance_id);
+      res.json({
+        elastic_ip: { id: eip.id, ip: eip.ip, associated_instance_id: eip.associatedInstanceId },
+        traceId: getTraceId(req),
+      });
+    })
+  );
 
   router.get('/dns/zones', authMiddleware(), requirePermission('dns:read'), (req, res) => {
     res.json({ zones: [], traceId: getTraceId(req) });
