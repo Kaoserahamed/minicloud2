@@ -8,12 +8,14 @@ const { DatabaseService } = require('@minicloud/internal-database');
 const { InstanceLifecycle, Instance } = require('@minicloud/internal-compute');
 const { LocalFsDriver, BucketService } = require('@minicloud/internal-storage');
 const { NetworkService } = require('@minicloud/internal-network');
+const { AutoScalingService } = require('@minicloud/internal-compute');
 
 const db = new DatabaseService();
 const lifecycle = new InstanceLifecycle();
 const storageDriver = new LocalFsDriver({ root: process.env.STORAGE_ROOT || './storage-data' });
 const bucketService = new BucketService(storageDriver);
 const networkService = new NetworkService();
+const autoScalingService = new AutoScalingService();
 const OPENAPI_SPEC = fs.readFileSync(path.resolve(__dirname, '../../../api/openapi.yaml'), 'utf8');
 
 function asyncHandler(fn) {
@@ -700,6 +702,52 @@ function createRouter() {
         traceId: getTraceId(req),
       });
     }
+  );
+
+  router.get(
+    '/auto-scaling-groups',
+    authMiddleware(),
+    requirePermission('compute:read'),
+    asyncHandler(async (req, res) => {
+      res.json({
+        auto_scaling_groups: autoScalingService.listGroups(),
+        traceId: getTraceId(req),
+      });
+    })
+  );
+
+  router.post(
+    '/auto-scaling-groups',
+    authMiddleware(),
+    requirePermission('compute:write'),
+    asyncHandler(async (req, res) => {
+      const group = autoScalingService.createGroup({
+        name: req.body.name,
+        minSize: req.body.min_size,
+        maxSize: req.body.max_size,
+        desiredCapacity: req.body.desired_capacity,
+        vpcZoneIdentifiers: req.body.vpc_zone_identifiers,
+        targetGroupArns: req.body.target_group_arns,
+        healthCheckType: req.body.health_check_type,
+        healthCheckGracePeriod: req.body.health_check_grace_period,
+      });
+      res.status(201).json({ auto_scaling_group: group.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/auto-scaling-groups/:id/scale',
+    authMiddleware(),
+    requirePermission('compute:write'),
+    asyncHandler(async (req, res) => {
+      const result = autoScalingService.scaleGroup(req.params.id, req.body.adjustment);
+      if (!result) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'NOT_FOUND', message: 'Auto scaling group not found' });
+      }
+      res.json({ auto_scaling_group: result, traceId: getTraceId(req) });
+    })
   );
 
   router.use((err, req, res, _next) => {

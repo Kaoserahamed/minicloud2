@@ -1,4 +1,5 @@
 const { query } = require('@minicloud/internal-database/pool');
+const crypto = require('crypto');
 const INSTANCE_STATES = {
   pending: 'pending',
   running: 'running',
@@ -203,4 +204,143 @@ class InstanceLifecycle {
   }
 }
 
-module.exports = { INSTANCE_STATES, Instance, InstanceLifecycle };
+class AutoScalingGroup {
+  constructor({
+    id,
+    name,
+    minSize,
+    maxSize,
+    desiredCapacity,
+    vpcZoneIdentifiers = [],
+    targetGroupArns = [],
+    healthCheckType = 'EC2',
+    healthCheckGracePeriod = 300,
+  }) {
+    this.id = id;
+    this.name = name;
+    this.minSize = minSize;
+    this.maxSize = maxSize;
+    this.desiredCapacity = desiredCapacity;
+    this.vpcZoneIdentifiers = vpcZoneIdentifiers;
+    this.targetGroupArns = targetGroupArns;
+    this.healthCheckType = healthCheckType;
+    this.healthCheckGracePeriod = healthCheckGracePeriod;
+    this.instances = [];
+    this.createdAt = new Date().toISOString();
+    this.lastScalingEvent = 0;
+  }
+
+  canScale() {
+    const now = Date.now();
+    return now - this.lastScalingEvent >= this.healthCheckGracePeriod * 1000;
+  }
+
+  scaleUp(count) {
+    if (!this.canScale()) {
+      return 0;
+    }
+    const room = this.maxSize - (this.instances.length + count);
+    if (room <= 0) {
+      return 0;
+    }
+    const toAdd = Math.min(count, room);
+    for (let i = 0; i < toAdd; i++) {
+      this.instances.push(`inst-asg-${Date.now()}-${i}`);
+    }
+    this.desiredCapacity += toAdd;
+    this.lastScalingEvent = Date.now();
+    return toAdd;
+  }
+
+  scaleDown(count) {
+    if (!this.canScale()) {
+      return 0;
+    }
+    const room = this.instances.length - this.minSize;
+    if (room <= 0) {
+      return 0;
+    }
+    const toRemove = Math.min(count, room);
+    this.instances.splice(this.instances.length - toRemove, toRemove);
+    this.desiredCapacity -= toRemove;
+    this.lastScalingEvent = Date.now();
+    return toRemove;
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      name: this.name,
+      min_size: this.minSize,
+      max_size: this.maxSize,
+      desired_capacity: this.desiredCapacity,
+      instance_count: this.instances.length,
+      vpc_zone_identifiers: this.vpcZoneIdentifiers,
+      target_group_arns: this.targetGroupArns,
+      health_check_type: this.healthCheckType,
+      health_check_grace_period: this.healthCheckGracePeriod,
+      created_at: this.createdAt,
+    };
+  }
+}
+
+class AutoScalingService {
+  constructor() {
+    this.groups = new Map();
+  }
+
+  createGroup({
+    name,
+    minSize,
+    maxSize,
+    desiredCapacity,
+    vpcZoneIdentifiers,
+    targetGroupArns,
+    healthCheckType,
+    healthCheckGracePeriod,
+  }) {
+    const id = `asg_${crypto.randomBytes(8).toString('hex')}`;
+    const group = new AutoScalingGroup({
+      id,
+      name,
+      minSize,
+      maxSize,
+      desiredCapacity,
+      vpcZoneIdentifiers,
+      targetGroupArns,
+      healthCheckType,
+      healthCheckGracePeriod,
+    });
+    this.groups.set(id, group);
+    return group;
+  }
+
+  listGroups() {
+    return [...this.groups.values()].map((g) => g.toJSON());
+  }
+
+  getGroup(id) {
+    return this.groups.get(id) || null;
+  }
+
+  scaleGroup(id, adjustment) {
+    const group = this.groups.get(id);
+    if (!group) {
+      return null;
+    }
+    if (adjustment > 0) {
+      group.scaleUp(adjustment);
+    } else if (adjustment < 0) {
+      group.scaleDown(-adjustment);
+    }
+    return group.toJSON();
+  }
+}
+
+module.exports = {
+  INSTANCE_STATES,
+  Instance,
+  InstanceLifecycle,
+  AutoScalingGroup,
+  AutoScalingService,
+};
