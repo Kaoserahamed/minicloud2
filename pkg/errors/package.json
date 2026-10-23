@@ -1,0 +1,6 @@
+{
+  "name": "@minicloud/errors",
+  "version": "0.1.0",
+  "main": "index.js",
+  "description": "Shared error types and helpers"
+}

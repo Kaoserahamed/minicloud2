@@ -1,0 +1,6 @@
+{
+  "name": "@minicloud/tracing",
+  "version": "0.1.0",
+  "main": "index.js",
+  "description": "Request tracing middleware with trace ID propagation"
+}

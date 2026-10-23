@@ -1,0 +1,6 @@
+{
+  "name": "@minicloud/logging",
+  "version": "0.1.0",
+  "main": "index.js",
+  "description": "Structured JSON logger with levels and trace IDs"
+}
