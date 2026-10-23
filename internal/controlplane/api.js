@@ -2,6 +2,43 @@ const express = require('express');
 const { logger } = require('@minicloud/logging');
 const { traceMiddleware, getTraceId } = require('@minicloud/tracing');
 const { authMiddleware, requirePermission, requireRole, issueJWT } = require('./auth');
+const { DatabaseService } = require('@minicloud/internal-database');
+
+const db = new DatabaseService();
+
+function quotaMiddleware(resource) {
+  return async function enforceQuota(req, res, next) {
+    const projectId = req.body.project_id || req.query.project_id;
+    if (!projectId) {
+      return next();
+    }
+    try {
+      const requested =
+        resource === 'instance'
+          ? {
+              instances: 1,
+              cpu: req.body.cpu || 1,
+              ramMb: req.body.ramMb || 512,
+              storageGb: req.body.storageGb || 10,
+            }
+          : {};
+      const { allowed, violations } = await db.checkProjectQuota(projectId, requested);
+      if (!allowed) {
+        return res.status(403).json({
+          success: false,
+          error: 'QUOTA_EXCEEDED',
+          message: `Quota exceeded for project ${projectId}`,
+          violations,
+          traceId: getTraceId(req),
+        });
+      }
+    } catch (err) {
+      logger.error('Quota check failed', { message: err.message, projectId });
+      return next();
+    }
+    next();
+  };
+}
 
 function createRouter() {
   const router = express.Router();
@@ -45,9 +82,17 @@ function createRouter() {
     res.json({ projects: [], traceId: getTraceId(req) });
   });
 
-  router.post('/projects', authMiddleware, requirePermission('compute:write'), (req, res) => {
-    res.status(201).json({ id: 'proj_' + Date.now(), name: req.body.name, traceId: getTraceId(req) });
-  });
+  router.post(
+    '/projects',
+    authMiddleware,
+    requirePermission('compute:write'),
+    quotaMiddleware('project'),
+    (req, res) => {
+      res
+        .status(201)
+        .json({ id: 'proj_' + Date.now(), name: req.body.name, traceId: getTraceId(req) });
+    }
+  );
 
   router.get('/projects/:id', authMiddleware, requirePermission('compute:read'), (req, res) => {
     res.json({ id: req.params.id, name: 'Project', traceId: getTraceId(req) });
@@ -61,16 +106,22 @@ function createRouter() {
     res.json({ instances: [], traceId: getTraceId(req) });
   });
 
-  router.post('/instances', authMiddleware, requirePermission('compute:write'), (req, res) => {
-    res.status(201).json({
-      id: 'inst_' + Date.now(),
-      name: req.body.name,
-      project_id: req.body.project_id,
-      state: 'pending',
-      region: req.body.region,
-      traceId: getTraceId(req),
-    });
-  });
+  router.post(
+    '/instances',
+    authMiddleware,
+    requirePermission('compute:write'),
+    quotaMiddleware('instance'),
+    (req, res) => {
+      res.status(201).json({
+        id: 'inst_' + Date.now(),
+        name: req.body.name,
+        project_id: req.body.project_id,
+        state: 'pending',
+        region: req.body.region,
+        traceId: getTraceId(req),
+      });
+    }
+  );
 
   router.get('/buckets', authMiddleware, requirePermission('storage:read'), (req, res) => {
     res.json({ buckets: [], traceId: getTraceId(req) });
@@ -83,6 +134,27 @@ function createRouter() {
   router.get('/dns/zones', authMiddleware, requirePermission('dns:read'), (req, res) => {
     res.json({ zones: [], traceId: getTraceId(req) });
   });
+
+  router.get('/regions', authMiddleware, requirePermission('compute:read'), (req, res) => {
+    res.json({
+      regions: ['us-east-1', 'us-west-2', 'eu-west-1'],
+      traceId: getTraceId(req),
+    });
+  });
+
+  router.get(
+    '/regions/:region/zones',
+    authMiddleware,
+    requirePermission('compute:read'),
+    (req, res) => {
+      const zones = { 'us-east-1': ['a', 'b'], 'us-west-2': ['a'], 'eu-west-1': ['a'] };
+      res.json({
+        region: req.params.region,
+        zones: (zones[req.params.region] || []).map((z) => `${req.params.region}${z}`),
+        traceId: getTraceId(req),
+      });
+    }
+  );
 
   return router;
 }

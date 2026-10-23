@@ -1,0 +1,6 @@
+{
+  "name": "@minicloud/internal-scheduler",
+  "version": "0.1.0",
+  "main": "index.js",
+  "description": "Scheduler interface and bin-packing placement algorithm"
+}
