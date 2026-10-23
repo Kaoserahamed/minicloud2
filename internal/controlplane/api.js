@@ -8,6 +8,7 @@ const { DatabaseService } = require('@minicloud/internal-database');
 const { InstanceLifecycle, Instance } = require('@minicloud/internal-compute');
 const { LocalFsDriver, BucketService } = require('@minicloud/internal-storage');
 const { NetworkService } = require('@minicloud/internal-network');
+const { ManagedDatabaseService } = require('@minicloud/internal-database/managed-database');
 const { AutoScalingService } = require('@minicloud/internal-compute');
 
 const db = new DatabaseService();
@@ -16,6 +17,7 @@ const storageDriver = new LocalFsDriver({ root: process.env.STORAGE_ROOT || './s
 const bucketService = new BucketService(storageDriver);
 const networkService = new NetworkService();
 const autoScalingService = new AutoScalingService();
+const managedDbService = new ManagedDatabaseService();
 const OPENAPI_SPEC = fs.readFileSync(path.resolve(__dirname, '../../../api/openapi.yaml'), 'utf8');
 
 function asyncHandler(fn) {
@@ -747,6 +749,95 @@ function createRouter() {
           .json({ success: false, error: 'NOT_FOUND', message: 'Auto scaling group not found' });
       }
       res.json({ auto_scaling_group: result, traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/databases',
+    authMiddleware(),
+    requirePermission('database:read'),
+    asyncHandler(async (req, res) => {
+      res.json({
+        databases: managedDbService.listInstances(),
+        traceId: getTraceId(req),
+      });
+    })
+  );
+
+  router.post(
+    '/databases',
+    authMiddleware(),
+    requirePermission('database:write'),
+    asyncHandler(async (req, res) => {
+      const db = managedDbService.createInstance({
+        name: req.body.name,
+        engine: req.body.engine,
+        engineVersion: req.body.engine_version,
+        instanceClass: req.body.instance_class,
+        allocatedStorage: req.body.allocated_storage,
+        masterUsername: req.body.master_username,
+        projectId: req.body.project_id,
+        vpcId: req.body.vpc_id,
+        subnetIds: req.body.subnet_ids,
+        multiAz: req.body.multi_az,
+        backupRetentionDays: req.body.backup_retention_days,
+      });
+      res.status(201).json({ database: db.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/databases/:id',
+    authMiddleware(),
+    requirePermission('database:read'),
+    asyncHandler(async (req, res) => {
+      const instance = managedDbService.getInstance(req.params.id);
+      if (!instance) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'NOT_FOUND', message: 'Database not found' });
+      }
+      res.json({ database: instance.toJSON(), traceId: getTraceId(req) });
+    })
+  );
+
+  router.delete(
+    '/databases/:id',
+    authMiddleware(),
+    requirePermission('database:write'),
+    asyncHandler(async (req, res) => {
+      managedDbService.deleteInstance(req.params.id);
+      res.status(204).end();
+    })
+  );
+
+  router.post(
+    '/databases/:id/backups',
+    authMiddleware(),
+    requirePermission('database:write'),
+    asyncHandler(async (req, res) => {
+      const backup = managedDbService.createBackup(req.params.id);
+      res.status(201).json({ backup, traceId: getTraceId(req) });
+    })
+  );
+
+  router.get(
+    '/databases/:id/backups',
+    authMiddleware(),
+    requirePermission('database:read'),
+    asyncHandler(async (req, res) => {
+      const backups = managedDbService.listBackups(req.params.id);
+      res.json({ backups, traceId: getTraceId(req) });
+    })
+  );
+
+  router.post(
+    '/databases/:id/read-replicas',
+    authMiddleware(),
+    requirePermission('database:write'),
+    asyncHandler(async (req, res) => {
+      const replica = managedDbService.createReadReplica(req.params.id, req.body.name);
+      res.status(201).json({ database: replica.toJSON(), traceId: getTraceId(req) });
     })
   );
 
